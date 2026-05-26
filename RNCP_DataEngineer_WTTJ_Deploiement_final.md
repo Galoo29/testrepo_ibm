@@ -194,7 +194,7 @@ flowchart TD
     FT -->|1. Ingestion horaire| AF
     WTTJ -->|1. Ingestion horaire| AF
     AF -->|2. Écriture brute| MONGO_RAW
-    AF -->|3. Nettoyage & normalisation (PythonOperator)| MONGO_NORM
+    AF -->|3. Nettoyage et normalisation - PythonOperator| MONGO_NORM
     MONGO_RAW -->|Lecture payloads bruts| AF
     MONGO_NORM -->|4. Lecture offres normalisées| CR_ML
     CR_ML -->|5. Offres + vecteurs| ES
