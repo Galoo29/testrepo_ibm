@@ -476,7 +476,21 @@ Stabilisation & V2                                                ████�
 
 > **Lecture du Gantt :** les phases s'enchaînent avec recouvrement (le développement de l'API démarre avant la fin de l'indexation, le fine-tuning chevauche le staging). Les bascules de paliers Elasticsearch (managé en M12, HA en M15) sont visibles et alignées sur les jalons J4 et J5.
 
-### 5.5 Dépendances critiques & points de vigilance planning
+### 5.5 Activité par profil et par mois
+
+> Légende : **●** = temps plein · **◑** = partiel (quelques jours/semaine) · **○** = ponctuel (quelques jours) · **—** = absent
+> Les libellés décrivent la nature principale de l'activité sur le mois.
+
+| Profil | M1 | M2 | M3 | M4 | M5 | M6 | M7 | M8 | M9 | M10 | M11 | M12 | M13 | M14 | M15 | M16 | M17 | M18 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **Data Engineer** | ● Setup repo, CI/CD, squelette Cloud Run | ● Pipeline ingestion FT (DAG Airflow) | ● Pipeline WTTJ + normalisation MongoDB | ● Intégration Cloud Run ML (POC) + formation | ● Indexation ES self-hosted + formation Airflow | ● API REST Cloud Run v1 | ● Dashboard KPIs v1 + monitoring | ● Déploiement staging, tests charge | ● Support recette utilisateur | ● Support fine-tuning, RGPD | ● Hardening, migration ES → managé (staging) | ● Go-live canary, migration ES palier 2 | ◑ Correctifs, stabilisation | ◑ Stabilisation, ajust. seuils | ◑ Optim. perf., migration ES palier 3 | ◑ Optimisations performance | ◑ Itérations V2 produit | ◑ Itérations V2, documentation |
+| **Data Analyst** | ◑ Définition KPIs, préparation dashboards | ◑ Exploration données FT, proto dashboard | ◑ Analyse qualité offres normalisées | ◑ Suivi intégration embeddings (métriques) | ◑ Dashboard KPIs v0 (données dev) | ● Dashboard KPIs v1 + métriques qualité | ● Formation évaluation sémantique + Kibana | ● Tests recette qualité résultats (staging) | ● Recette utilisateur, analyse résultats | ● Analyse fine-tuning, RGPD | ◑ Documentation KPIs, rapport recette | ● Suivi go-live, monitoring qualité | ● Monitoring production, alertes | ◑ Analyse stabilisation | ● Monitoring montée en charge | ◑ Suivi performance, reporting | ◑ Itérations V2, nouveaux KPIs | ◑ Bilan projet, roadmap V2 |
+| **ML Engineer** *(freelance)* | — | — | — | ○ Cadrage : choix modèle embeddings, POC | ● Intégration sentence-transformers, benchmarks | ● Indexation vectorielle ES, évaluation NDCG | ◑ Évaluation API recherche v1, ajustements | ◑ Préparation fine-tuning (données staging) | ● Fine-tuning modèle sur données réelles | ● Fine-tuning, évaluation finale | ○ Validation modèle, transfert compétences | ○ Support go-live (disponibilité réduite) | — | — | — | — | — | — |
+| **Cloud Engineer** *(freelance)* | ● Setup GCP, IaC Terraform, réseau, sécurité | ● Config Cloud Run (ML + API), CI/CD infra | ○ Finalisations IaC, tests infra | ○ Support config Cloud Run ML (POC) | — | — | — | ○ Tests charge infra, config staging | — | — | ○ Hardening sécu, conformité infra | ● Migration ES self-hosted → Elastic Cloud palier 2 | ○ Stabilisation infra prod | — | ○ Migration ES palier 3 (HA 3 nœuds) | — | — | — |
+
+> **Lecture pour le jury :** le ML Engineer freelance intervient sur **M4-M12** (~6 mois ETP répartis), avec un pic sur M5-M10 (sélection, intégration, fine-tuning) et une présence ponctuelle au go-live pour support. Le Cloud Engineer freelance intervient sur **M1-M2** (setup infra intensif), puis ponctuellement à chaque jalon technique clé (M4, M8, M11, M12, M15). Les deux profils internes (Data Engineer et Data Analyst) sont présents à 100 % sur toute la durée, avec une charge maximale en phase de staging/production.
+
+### 5.6 Dépendances critiques & points de vigilance planning
 
 | Dépendance | Risque planning | Mitigation |
 |---|---|---|
