@@ -172,7 +172,8 @@ flowchart TD
 
     subgraph VM_GCP["GCP — VM Compute Engine (e2-standard-4)"]
         AF["Airflow (Docker)<br/>Orchestrateur des DAGs"]
-        MONGO[("MongoDB (Docker)<br/>Payloads bruts JSON")]
+        MONGO_RAW[("MongoDB — offres_brutes (Docker)<br/>Payloads JSON bruts")]
+        MONGO_NORM[("MongoDB — offres_normalisées (Docker)<br/>Offres nettoyées & normalisées")]
     end
 
     subgraph SERVERLESS["GCP Serverless — Cloud Run (stateless)"]
@@ -192,17 +193,18 @@ flowchart TD
 
     FT -->|1. Ingestion horaire| AF
     WTTJ -->|1. Ingestion horaire| AF
-    AF -->|2. Écriture brute| MONGO
-    AF -->|3. Trigger job vectorisation| CR_ML
-    MONGO -->|4. Lecture textes bruts| CR_ML
-    CR_ML -->|5. Offres normalisées + vecteurs| ES
-    MONGO -.->|Archivage périodique| GCS
+    AF -->|2. Écriture brute| MONGO_RAW
+    AF -->|3. Nettoyage & normalisation (PythonOperator)| MONGO_NORM
+    MONGO_RAW -->|Lecture payloads bruts| AF
+    MONGO_NORM -->|4. Lecture offres normalisées| CR_ML
+    CR_ML -->|5. Offres + vecteurs| ES
+    MONGO_RAW -.->|Archivage périodique| GCS
     FRONT -->|Requêtes candidats| CR_API
     CR_API -->|Query vectorielle kNN| ES
     ES -->|Visualisations analytiques| BI
 ```
 
-> **Légende (si le diagramme ne s'affiche pas) :** Airflow (sur VM réduite) ingère France Travail + WTTJ **toutes les heures**, écrit le brut dans MongoDB, puis déclenche un **job Cloud Run d'inférence ML** qui lit le brut, calcule les embeddings et pousse offres + vecteurs dans **Elastic Cloud**. Le front candidat interroge une **API Cloud Run** (FastAPI) qui fait des requêtes vectorielles kNN sur Elastic Cloud. Les dashboards BI/Kibana lisent Elastic Cloud. MongoDB archive vers Coldline. **La VM ne porte plus que l'orchestration et le stockage brut ; le calcul et l'exposition sont externalisés.**
+> **Légende (si le diagramme ne s'affiche pas) :** Airflow (sur VM réduite) ingère France Travail + WTTJ **toutes les heures**, écrit le brut dans une collection MongoDB `offres_brutes`, puis exécute un **PythonOperator de nettoyage & normalisation** (déduplication, standardisation des champs, nettoyage HTML…) qui écrit le résultat dans une collection `offres_normalisées`. Airflow déclenche ensuite un **job Cloud Run d'inférence ML** qui lit les offres normalisées, calcule les embeddings et pousse offres + vecteurs dans **Elastic Cloud**. Le front candidat interroge une **API Cloud Run** (FastAPI) qui fait des requêtes vectorielles kNN sur Elastic Cloud. Les dashboards BI/Kibana lisent Elastic Cloud. MongoDB (`offres_brutes`) archive vers Coldline. **La VM porte l'orchestration, le stockage et la normalisation légère ; le calcul lourd et l'exposition sont externalisés.**
 
 ### 2.6 Arbitrages V1 → V2 et justification des composants
 
@@ -211,7 +213,8 @@ Le tableau ci-dessous récapitule ce qui change entre V1 et V2, et pourquoi chaq
 | Composant | V1 | V2 (cible) | Justification de l'arbitrage |
 |---|---|---|---|
 | **Orchestration & landing zone** | Airflow + MongoDB sur VM `e2-standard-8` | Airflow + MongoDB sur VM **`e2-standard-4`** | Libérée du calcul ML et de l'API publique (partis en serverless) et soulagée par le micro-batching, la VM peut être **divisée par deux**, ce qui divise par deux son coût 24/7. |
-| **Stockage documentaire brut** | MongoDB (sur VM) | MongoDB (sur VM) — *inchangé* | Reste pertinent pour stocker nativement les payloads JSON variables de France Travail. Son isolation sur la VM évite qu'un pic d'ingestion impacte l'application cliente. |
+| **Stockage documentaire brut** | MongoDB (sur VM) | MongoDB (sur VM) — deux collections : `offres_brutes` + `offres_normalisées` | Reste pertinent pour stocker nativement les payloads JSON variables de France Travail. La séparation en deux collections isole clairement les données brutes (archivage, traçabilité) des données prêtes à vectoriser (qualité garantie). Son isolation sur la VM évite qu'un pic d'ingestion impacte l'application cliente. |
+| **Nettoyage & normalisation** | Scripts Python ad hoc | **Airflow `PythonOperator` (sur VM)** | Scripts Python simples (déduplication, nettoyage HTML, standardisation salaires/localisations) : charge CPU négligeable, exécution en quelques secondes par micro-batch. Les laisser sur la VM avec Airflow est naturel — ils sont *stateless* mais sans la latence de démarrage d'un conteneur Cloud Run, et sans coût à l'usage supplémentaire. |
 | **Calcul / inférence ML** | Modèle d'embeddings sur la VM | **Cloud Run Jobs (serverless)** | Le calcul lourd est encapsulé dans un conteneur activé par Airflow à chaque micro-batch, scale le temps du batch, puis s'éteint. **Zéro risque d'OOM sur la VM**, paiement à l'usage uniquement. |
 | **Exposition (API)** | API REST sur la VM | **Cloud Run Service (serverless)** | L'API publique est isolée et auto-scalée (de 0 à N instances selon les vagues de candidats). Si les pipelines ont une anomalie sur la VM, **l'API de recherche reste 100 % disponible**. |
 | **Moteur sémantique** | Elasticsearch sur VM | **Elastic Cloud managé** (mono-nœud → HA 3 nœuds) | Cœur critique du produit. Le managé garantit HA multi-zone, sharding, sauvegardes et chiffrement **sans alourdir la charge ops** d'une petite équipe. |
