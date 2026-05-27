@@ -317,6 +317,7 @@ Pour supprimer le conteneur en conflit :
 `docker rm -f mysqldb`
 
 Puis relancez docker compose up.
+
 ---
 
 ## Partie 6 — Variables d'environnement en Python
